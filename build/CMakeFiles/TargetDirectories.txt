@@ -1,0 +1,3 @@
+/home/artem/Main/Inf3sem/QtProj/classi_face_cation/build/CMakeFiles/rebuild_cache.dir
+/home/artem/Main/Inf3sem/QtProj/classi_face_cation/build/CMakeFiles/edit_cache.dir
+/home/artem/Main/Inf3sem/QtProj/classi_face_cation/build/CMakeFiles/classi_face_cation.dir
