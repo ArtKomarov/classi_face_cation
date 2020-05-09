@@ -200,14 +200,10 @@ struct Net : torch::nn::Module {
 
         x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
         x = torch::relu(fc1->forward(x));
-        std::cout << "BatchNorm -> ";
         x = torch::nn::BatchNorm1d(4096)->forward(x);
-        std::cout << "<- BatchNorm" << std::endl;
         x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
         x = torch::relu(fc2->forward(x));
-        std::cout << "BatchNorm2 -> ";
         x = torch::nn::BatchNorm1d(4096)->forward(x);
-        std::cout << "<- BatchNorm2" << std::endl;
         x = fc3->forward(x);
         //x = torch::nn::functional::log_softmax(x, /*dim=*/1);
         return x;
@@ -215,7 +211,6 @@ struct Net : torch::nn::Module {
 
     torch::nn::Linear fc1{nullptr}, fc2{nullptr}, fc3{nullptr};
 
-    // Use one of many "standard library" modules.
 };
 
 
@@ -258,9 +253,7 @@ int main() {
             torch::Tensor loss = loss_class(prediction, batch.target.squeeze());
             // Compute gradients
 
-            std::cout << "backward ->";
             loss.backward();
-            std::cout << "<- backward" << std::endl;
 
             //std:: cout << "grad = " << optimizer.parameters() << std::endl;
             // Update the parameters
@@ -271,6 +264,8 @@ int main() {
                           << " | Loss: " << loss.item<float>() << std::endl;
             }
         }
+
+        torch::save(net, "net.pt");
     }
 
     return 0;
