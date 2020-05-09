@@ -23,6 +23,14 @@ const torch::TensorOptions options = torch::TensorOptions()
         //    .device(torch::kCUDA, 1)
         .requires_grad(true);
 
+const torch::TensorOptions lbl_options = torch::TensorOptions()
+        .dtype(torch::kLong)
+        .layout(torch::kStrided);
+        //    .device(torch::kCUDA, 1)
+        //.requires_grad(true);
+
+int batch_size = 20;
+
 #if 0 // Может пригодится
 
 std::vector<torch::Tensor> convert_labels(std::vector<int> lbls) {
@@ -74,6 +82,8 @@ public:
             return;
         }
 
+        std::cout << "Start processing images" << std::endl;
+
         std::stringstream str_image;
         std::string str_label;
         std::string sup;
@@ -91,7 +101,7 @@ public:
         uli el_num = 0;
         while(database.good() && !database.eof()) {
             label_int = std::stoi(str_label);
-            labels_.push_back(torch::full({1}, label_int, options));
+            labels_.push_back(torch::full({1}, label_int, lbl_options));
 
             std::getline(database, sup, ',');
 
@@ -117,6 +127,7 @@ public:
 //        std::cout << "Label = " << labels_.at(35887 - 26) << std::endl;
 //        std::cout << "Label = " << labels_.at(35887 - 27) << std::endl;
 
+        std::cout << "End processing images" << std::endl;
         std::cout << "EXECUTED TIME:" << (clock() - start_time) / CLOCKS_PER_SEC <<  "sec" << std::endl;
     }
 
@@ -132,38 +143,106 @@ public:
 
 };
 
-//// Define a new Module.
-//struct Net : torch::nn::Module {
-//    Net() {
-//        // Construct and register two Linear submodules.
-//        fc1 = register_module("fc1", torch::nn::Linear(784, 64));
-//        fc2 = register_module("fc2", torch::nn::Linear(64, 32));
-//        fc3 = register_module("fc3", torch::nn::Linear(32, 10));
-//    }
+// Define a new Module.
+struct Net : torch::nn::Module {
+    torch::nn::Conv2d conv1 = nullptr;
+    torch::nn::Conv2d conv2 = nullptr;
+    torch::nn::Conv2d conv3 = nullptr;
+    torch::nn::Conv2d conv4 = nullptr;
+    torch::nn::Conv2d conv5 = nullptr;
 
-//    // Implement the Net's algorithm.
-//    torch::Tensor forward(torch::Tensor x) {
-//        // Use one of many tensor manipulation functions.
-//        x = torch::relu(fc1->forward(x.reshape({x.size(0), 784})));
-//        x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
-//        x = torch::relu(fc2->forward(x));
-//        x = torch::log_softmax(fc3->forward(x), /*dim=*/1);
-//        return x;
-//    }
 
-//    // Use one of many "standard library" modules.
-//    torch::nn::Linear fc1{nullptr}, fc2{nullptr}, fc3{nullptr};
-//};
+    Net(int num_classes) {
+        // Construct and register two Linear submodules.
+        //fc1  = register_module("f1", torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 5).padding(1)));
+
+        conv1 = register_module("conv1", torch::nn::Conv2d(torch::nn::Conv2dOptions(1, 64, 5).stride(1).padding(2)));
+        conv2 = register_module("conv2", torch::nn::Conv2d(torch::nn::Conv2dOptions(64, 192, 5).stride(1).padding(2)));
+        conv3 = register_module("conv3", torch::nn::Conv2d(torch::nn::Conv2dOptions(192, 384, 3).stride(1).padding(1)));
+        conv4 = register_module("conv4", torch::nn::Conv2d(torch::nn::Conv2dOptions(384, 256, 3).stride(1).padding(1)));
+        conv5 = register_module("conv5", torch::nn::Conv2d(torch::nn::Conv2dOptions(256, 256, 3).stride(1).padding(1)));
+
+        fc1 = register_module("fc1", torch::nn::Linear(256 * 6 * 6, 4096));
+        fc2 = register_module("fc2", torch::nn::Linear(4096, 4096));
+        fc3 = register_module("fc3", torch::nn::Linear(4096, num_classes));
+    }
+
+    // Implement the Net's algorithm.
+    torch::Tensor forward(torch::Tensor x) {
+        // Use one of many tensor manipulation functions.
+        //std::cout << "type " << (typeid(x) == typeid(torch::Tensor)) << std::endl;
+        x = x.view({x.size(0), 1, PICTURE_HEIGHT, PICTURE_WIDTH}); //reshape
+
+        x = torch::relu(conv1->forward(x));
+        x = torch::max_pool2d(x, 2);
+        x = torch::relu(conv2->forward(x));
+        x = torch::max_pool2d(x, 2);
+
+        x = torch::relu(conv3->forward(x));
+        x = torch::relu(conv4->forward(x));
+        x = torch::relu(conv5->forward(x));
+        x = torch::max_pool2d(x, 2);
+
+        x = x.view({batch_size, 256 * 6 * 6});
+
+        x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
+        x = torch::relu(fc1->forward(x));
+        //x = torch::batch_norm(x);
+        x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
+        x = torch::relu(fc2->forward(x));
+        x = fc3->forward(x);
+        //x = torch::nn::functional::log_softmax(x, /*dim=*/1);
+        return x;
+    }
+
+    torch::nn::Linear fc1{nullptr}, fc2{nullptr}, fc3{nullptr};
+
+    // Use one of many "standard library" modules.
+};
 
 
 int main() {
-    CustomDataset custom_dataset("fer2013.csv");
-    int batch_size = 100;
+    auto custom_dataset = CustomDataset("fer2013.csv").map(torch::data::transforms::Stack<>());
 
     auto data_loader = torch::data::make_data_loader<torch::data::samplers::SequentialSampler>(
       std::move(custom_dataset),
       batch_size
     );
+
+//    for(auto& batch: *data_loader) {
+//      auto data = batch.data;
+//      auto target = batch.target.squeeze();
+//    }
+
+    auto net = std::make_shared<Net>(7);
+    torch::optim::Adam optimizer(net->parameters(),
+                                 torch::optim::AdamOptions(1e-3));
+    auto loss_class = torch::nn::CrossEntropyLoss();
+
+    for(size_t epoch=1; epoch<=10; ++epoch) {
+        size_t batch_index = 0;
+        // Iterate data loader to yield batches from the dataset
+        for (auto& batch : *data_loader) {
+            // Reset gradients
+            optimizer.zero_grad();
+            // Execute the model
+            torch::Tensor prediction = net->forward(batch.data.clone());
+            // Compute loss value
+            std::cout << batch.target << std::endl;
+            //prediction.squeeze_();
+            std::cout << prediction << std::endl;
+            torch::Tensor loss = loss_class(prediction, batch.target.squeeze());
+            // Compute gradients
+            loss.backward();
+            // Update the parameters
+            optimizer.step();
+
+            if (++batch_index % 2 == 0) {
+                std::cout << "Epoch: " << epoch << " | Batch: " << batch_index
+                          << " | Loss: " << loss.item<float>() << std::endl;
+            }
+        }
+    }
 
     return 0;
 
