@@ -19,9 +19,9 @@ const size_t PICTURE_SIZE = PICTURE_HEIGHT * PICTURE_WIDTH;
 // options
 const torch::TensorOptions options = torch::TensorOptions()
         .dtype(torch::kFloat32)
-        .layout(torch::kStrided)
+        .layout(torch::kStrided);
         //    .device(torch::kCUDA, 1)
-        .requires_grad(true);
+        //.requires_grad(true);
 
 const torch::TensorOptions lbl_options = torch::TensorOptions()
         .dtype(torch::kLong)
@@ -73,9 +73,10 @@ int convert_images(std::vector<std::string> str_imgs, std::vector<torch::Tensor>
 
 class CustomDataset : public torch::data::Dataset<CustomDataset> {
     std::vector <torch::Tensor> images_, labels_;
+    std::vector <torch::Tensor> test_images_, test_labels_;
 
 public:
-    CustomDataset(std::string dataset_name) {
+    CustomDataset(std::string dataset_name, float test_size = 0) {
         std::ifstream database(dataset_name);
         if(!database.good()) {
             std::cerr << "Can't open database file" << std::endl;
@@ -118,6 +119,18 @@ public:
             std::getline(database, sup);
             std::getline(database, str_label, ',');
         }
+
+        if(test_size != 0) {
+
+            test_images_.assign( images_.begin() + int((1 - test_size) * images_.size()) + 1, images_.end() );
+            test_labels_.assign( labels_.begin() + int((1 - test_size) * labels_.size()) + 1, labels_.end() );
+
+            images_.assign( images_.begin(), images_.begin() + int((1 - test_size) * images_.size()) );
+            labels_.assign( labels_.begin(), labels_.begin() + int((1 - test_size) * labels_.size()) );
+        }
+
+        //std::swap(test_images_.begin(), images_.begin() + int((1 - test_size) * images_.size()));
+        //std::swap(test_labels_.begin(), labels_.begin() + int((1 - test_size) * labels_.size()));
 
 //        // Check, 35887 - number of rows
 //        std::cout << "SUCCESS!!" << std::endl;
@@ -174,7 +187,7 @@ struct Net : torch::nn::Module {
         x = x.view({x.size(0), 1, PICTURE_HEIGHT, PICTURE_WIDTH}); //reshape
 
         x = torch::relu(conv1->forward(x));
-        x = torch::max_pool2d(x, 2);
+        x = torch::max_pool2d(x, 2, 2);
         x = torch::relu(conv2->forward(x));
         x = torch::max_pool2d(x, 2);
 
@@ -183,13 +196,18 @@ struct Net : torch::nn::Module {
         x = torch::relu(conv5->forward(x));
         x = torch::max_pool2d(x, 2);
 
-        x = x.view({batch_size, 256 * 6 * 6});
+        x = x.view({x.size(0), 256 * 6 * 6});
 
         x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
         x = torch::relu(fc1->forward(x));
-        //x = torch::batch_norm(x);
+        std::cout << "BatchNorm -> ";
+        x = torch::nn::BatchNorm1d(4096)->forward(x);
+        std::cout << "<- BatchNorm" << std::endl;
         x = torch::dropout(x, /*p=*/0.7, /*train=*/is_training());
         x = torch::relu(fc2->forward(x));
+        std::cout << "BatchNorm2 -> ";
+        x = torch::nn::BatchNorm1d(4096)->forward(x);
+        std::cout << "<- BatchNorm2" << std::endl;
         x = fc3->forward(x);
         //x = torch::nn::functional::log_softmax(x, /*dim=*/1);
         return x;
@@ -219,6 +237,12 @@ int main() {
                                  torch::optim::AdamOptions(1e-3));
     auto loss_class = torch::nn::CrossEntropyLoss();
 
+//    Net NetCheck(7);
+
+//    for (const auto& pair : NetCheck.named_parameters()) {
+//        std::cout << pair.key() << ": " << pair.value() << std::endl;
+//    }
+
     for(size_t epoch=1; epoch<=10; ++epoch) {
         size_t batch_index = 0;
         // Iterate data loader to yield batches from the dataset
@@ -228,12 +252,17 @@ int main() {
             // Execute the model
             torch::Tensor prediction = net->forward(batch.data.clone());
             // Compute loss value
-            std::cout << batch.target << std::endl;
+            //std::cout << "BATCH: \n" << batch.data << std::endl;
             //prediction.squeeze_();
             std::cout << prediction << std::endl;
             torch::Tensor loss = loss_class(prediction, batch.target.squeeze());
             // Compute gradients
+
+            std::cout << "backward ->";
             loss.backward();
+            std::cout << "<- backward" << std::endl;
+
+            //std:: cout << "grad = " << optimizer.parameters() << std::endl;
             // Update the parameters
             optimizer.step();
 
