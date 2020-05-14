@@ -320,7 +320,7 @@ ResNet18::ResNet18()
     layer2 = make_layer(64, 2);
     layer3 = make_layer(64, 2);
     layer4 = make_layer(64, 2);
-    fc = register_module("fc", nn::Linear(64, 4096));
+    fc = register_module("fc", nn::Linear(64, NUM_CLASSES));
 }
 
 nn::Sequential ResNet18::make_layer(alnet_t planes, alnet_t stride)
