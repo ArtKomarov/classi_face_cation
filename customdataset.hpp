@@ -23,4 +23,26 @@ public:
     torch::optional<size_t> size() const override;
 };
 
+typedef torch::disable_if_t<false, std::unique_ptr<torch::data::StatelessDataLoader\
+<torch::data::datasets::MapDataset<CustomDataset, torch::data::transforms::Stack<torch::data::Example<> > >,\
+torch::data::samplers::SequentialSampler>, std::default_delete<torch::data::StatelessDataLoader<torch::data::datasets::MapDataset<CustomDataset,\
+torch::data::transforms::Stack<torch::data::Example<> > >, torch::data::samplers::SequentialSampler> > > > data_loader_t;
+
+#define STD_STOI_FAIL_CASE(database, sup, str_label) \
+try {                                                \
+    std::getline(database, sup); /* Skip row*/       \
+                                                            \
+    std::getline(database, str_label, ','); /* Get label */ \
+} catch (const std::ifstream::failure &e) {                             \
+    std::cerr << IMG_PROC_FAIL_MSG << e.what() << std::endl;            \
+    std::cerr << "failbit: "  << database.fail()                        \
+              << "\neofbit: " << database.eof()                         \
+              << "\nbadbit: " << database.bad() << std::endl;           \
+    return;                                                             \
+} catch (...) {                                                         \
+    std::cerr << IMG_PROC_FAIL_MSG << "unknown exception" << std::endl; \
+    return;                                                             \
+}
+
+
 #endif // CUSTOMDATASET_HPP
