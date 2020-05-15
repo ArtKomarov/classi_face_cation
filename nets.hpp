@@ -26,7 +26,9 @@ class Net: public nn::Module
 {
 public:
     virtual Tensor forward(torch::Tensor x);
+    virtual ~Net();
 };
+
 
 class OurNet: public Net//public torch::nn::Module
 {
@@ -105,6 +107,7 @@ public:
     BasicBlock(alnet_t inplanes, alnet_t planes, alnet_t stride, nn::Sequential downsample);
     Tensor forward(Tensor x);
 };
+
 
 class ResNet18 : public Net
 {

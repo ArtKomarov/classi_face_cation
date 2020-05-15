@@ -14,7 +14,7 @@ class CustomDataset : public torch::data::Dataset<CustomDataset> {
 //    std::vector <torch::Tensor> test_images_, test_labels_;
 
 public:
-    CustomDataset(std::string dataset_name, float test_size);
+    CustomDataset(std::vector<torch::Tensor> &images, std::vector<torch::Tensor> &labels);
 
     // Get one sample (image and label)
     torch::data::Example<> get(size_t index) override;
@@ -27,6 +27,13 @@ typedef torch::disable_if_t<false, std::unique_ptr<torch::data::StatelessDataLoa
 <torch::data::datasets::MapDataset<CustomDataset, torch::data::transforms::Stack<torch::data::Example<> > >,\
 torch::data::samplers::SequentialSampler>, std::default_delete<torch::data::StatelessDataLoader<torch::data::datasets::MapDataset<CustomDataset,\
 torch::data::transforms::Stack<torch::data::Example<> > >, torch::data::samplers::SequentialSampler> > > > data_loader_t;
+
+struct TrainTestData {
+    data_loader_t train_;
+    data_loader_t test_;
+    TrainTestData(std::string dataset_name, float test_size);
+};
+
 
 #define STD_STOI_FAIL_CASE(database, sup, str_label) \
 try {                                                \

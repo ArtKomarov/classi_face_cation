@@ -8,5 +8,6 @@ const size_t NUM_CLASSES = 7;
 const size_t PICTURE_HEIGHT = 48;
 const size_t PICTURE_WIDTH  = 48;
 const size_t PICTURE_SIZE   = PICTURE_HEIGHT * PICTURE_WIDTH;
+const size_t BATCH_SIZE = 10;
 
 #endif // CLASSIFACECATION_HPP

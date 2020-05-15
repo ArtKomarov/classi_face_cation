@@ -1,4 +1,3 @@
-#include "torch/torch.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -10,26 +9,22 @@
 #include <cerrno>
 #include <unistd.h>
 
+#include "torch/torch.h"
+#include "clfc.hpp"
 #include "customdataset.hpp"
-#include "alexnet.h"
+#include "nets.hpp"
 
 using namespace torch;
 
-const size_t batch_size = 2;
-
 int main() {
-    auto custom_dataset = CustomDataset("fer2013.csv", 0.3).map(data::transforms::Stack<>());
+//    auto custom_dataset = CustomDataset("fer2013.csv", 0.3).map(data::transforms::Stack<>());
 
-    auto data_loader = data::make_data_loader<data::samplers::SequentialSampler>(
-                std::move(custom_dataset),
-                batch_size
-                );
+//    data_loader_t data_loader = data::make_data_loader<data::samplers::SequentialSampler>(
+//                std::move(custom_dataset),
+//                batch_size
+//                );
 
-//    std::string sup;
-//    std::cout << "Do you want to continue? (y/n)" << std::endl;
-//    std::cin >> sup;
-//    if(sup == "n")
-//        return 0;
+    TrainTestData TTData("fer2013.csv", 0.3);
 
     int num;
     auto net = std::make_shared<Net>();
@@ -67,18 +62,19 @@ int main() {
     // Set loss function class
     auto loss_class = nn::CrossEntropyLoss();
 
+    size_t batch_index = 0;
+
     //Start training
-    for(size_t epoch=1; epoch<=2; ++epoch) {
-        size_t batch_index = 0;
+    for(size_t epoch=1; epoch<=50; ++epoch) {
         // Iterate data loader to yield batches from the dataset
-        for (auto& batch : *data_loader) {
+        for (auto& batch : *(TTData.train_)) {
             // Reset gradients
             optimizer.zero_grad();
             // Execute the model
             Tensor prediction = net->forward(batch.data);
             // Compute loss value
             //prediction.squeeze_();
-            std::cout << prediction << std::endl;
+            //std::cout << prediction << std::endl;
             // Calculate loss
             Tensor loss = loss_class(prediction, batch.target.squeeze()); //squeeze reshape tensor by remove dimetions with size 1
 
@@ -91,30 +87,47 @@ int main() {
 
             prediction.detach_(); //free memory (batch.data.clone())
 
-            break;
-            if (++batch_index % 2 == 0) {
+            if (batch_index++ % 2 == 0) {
                 std::cout << "Epoch: " << epoch << " | Batch: " << batch_index
                           << " | Loss: " << loss.item<float>() << std::endl;
             }
+            break;
         }
+
+        batch_index = 0;
 
         // Save our model
         save(net, "net3.pt");
     }
 
-    //torch::data::Example<> a = *((*data_loader).begin()); // Вывод - если ссылка, то память очищается (похоже, что происходит move assigment с последующим удалением)
-    //std::cout << a.target << std::endl;
-
     int stop = 0;
-    for (auto& batch : *data_loader) { // А тут норм WTF???
-        Tensor prediction = net->forward(batch.data); //BUUUUM утечка только из-за этого
-        std::cout << loss_class(prediction, batch.target.squeeze()) << std::endl;
+    long int len = 0;
+    Tensor accuracy;
+    Tensor correct_elems = torch::zeros({1}, options);
 
-        //prediction.detach_(); //free memory (batch.data.clone())
-        std::cout << batch.data;
-//        if(++stop == 2)
-//            break;
+    try {
+        for (auto& batch : *(TTData.test_)) { // А тут норм WTF???
+            Tensor prediction = net->forward(batch.data); //BUUUUM утечка только из-за этого
+            std::cout << loss_class(prediction, batch.target.squeeze()) << std::endl;
+
+            //std::cout << prediction << std::endl;
+            //std::cout << prediction.argmax(1) << std::endl;
+            correct_elems += (batch.target.squeeze() == prediction.argmax(1)).sum();
+            //std::cout << correct_elems << std::endl;
+            len += BATCH_SIZE;
+        }
+        accuracy = correct_elems / torch::full(1, len, options);
+        std::cout << "Test accuracy: " << accuracy.item() << std::endl;
+    } catch (const c10::IndexError& er){
+        std::cout << er.what() << std::endl;
+    } catch (const c10::ValueError& vr){
+        std::cout << vr.what() << std::endl;
+    } catch (const std::runtime_error& re) {
+        std::cout << re.what() << std::endl;
+    } catch(...) {
+        std::cout << "Testing failed" << std::endl;
     }
+
     return 0;
 }
 

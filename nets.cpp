@@ -26,17 +26,19 @@ const alnet_t OUR_OUT_NEURONS_CONV_5 = OUT_NEURONS_CONV_4;  */
 
 const std::string FORWARD_ERROR_STR = "Forward failed: ";
 
-Tensor Net::forward(Tensor x)
-{
+Tensor Net::forward(torch::Tensor x) {
     return x;
 }
+
+Net::~Net() {}
+
 
 OurNet::OurNet()
 {
     conv1_1 = register_module("conv1_1", nn::Conv2d(nn::Conv2dOptions(CHANELS_NUM, 64, 3).stride(1).padding(1)));
     conv1_2 = register_module("conv1_2", nn::Conv2d(nn::Conv2dOptions(64, 64, 3).stride(1).padding(1)));
 
-    conv2_1 = register_module("conv2_1", nn::Conv2d(nn::Conv2dOptions(64, 128, 3).stride(1).padding(1)));
+    conv2_1 = register_module("conv2_1", nn::Conv2d(nn::Conv2dOptions(64,  128, 3).stride(1).padding(1)));
     conv2_2 = register_module("conv2_2", nn::Conv2d(nn::Conv2dOptions(128, 128, 3).stride(1).padding(1)));
 
     conv3_1 = register_module("conv3_1", nn::Conv2d(nn::Conv2dOptions(128, 256, 3).stride(1).padding(1)));
@@ -135,8 +137,8 @@ SmallNet::SmallNet()
     conv1 = register_module("conv1", nn::Conv2d(torch::nn::Conv2dOptions(CHANELS_NUM , 64, 5).stride(1).padding(2)));
     conv2 = register_module("conv2", nn::Conv2d(torch::nn::Conv2dOptions(64, 128, 3).stride(1).padding(1)));
 
-    fc1 = register_module("fc1", nn::Linear(12 * 12 * 128, 256));
-    fc2 = register_module("fc2", nn::Linear(256, NUM_CLASSES));
+    fc1   = register_module("fc1", nn::Linear(12 * 12 * 128, 256));
+    fc2   = register_module("fc2", nn::Linear(256, NUM_CLASSES));
 
     //std::cout << "Small" << std::endl;
 }
