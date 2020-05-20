@@ -17,23 +17,29 @@ const torch::TensorOptions lbl_options = torch::TensorOptions(torch::kLong)
 //    .device(torch::kCUDA, 1)
 //.requires_grad(true);
 
-const size_t DOTS_PERIOD    = 800;
+const size_t      DOTS_PERIOD       = 800;
 const std::string IMG_PROC_FAIL_MSG = "Processing images failed: ";
 
+bool TrainTestData::good() const {
+    return good_;
+}
 
-TrainTestData::TrainTestData(std::string dataset_name, float test_size = 0) {
+TrainTestData::TrainTestData(std::string dataset_name, float test_size = 0) :
+    good_(true) {
     std::vector<torch::Tensor> images;
-    std::vector<torch::Tensor> labels; //test_
+    std::vector<torch::Tensor> labels;
     std::vector<torch::Tensor> test_images;
     std::vector<torch::Tensor> test_labels;
     if(test_size > 1 || test_size < 0) {
         std::cerr << "Error: test size must be in interval [0, 1])!" << std::endl;
+        good_ = false;
         return;
     }
 
     std::ifstream database(dataset_name);
     if(!database) {
         std::cerr << "Error: Can't open database file properly!" << std::endl;
+        good_ = false;
         return;
     }
 
@@ -43,7 +49,7 @@ TrainTestData::TrainTestData(std::string dataset_name, float test_size = 0) {
     std::string str_label;       // for reading strings with label
     std::string sup;             // for reading other strings
 
-    int label_int;
+    int   label_int;
     float pix;
     float image_float[PICTURE_SIZE];
 
@@ -54,6 +60,7 @@ TrainTestData::TrainTestData(std::string dataset_name, float test_size = 0) {
         std::getline(database, sup);
         std::getline(database, str_label, ','); // Get label
     } catch(const std::ifstream::failure& e) {
+        good_ = false;
         std::cerr << "Data procession failed at the beginning,"
                      " so program terminated. Error:" << std::endl;
         std::cerr << IMG_PROC_FAIL_MSG << e.what() << std::endl;
@@ -86,12 +93,12 @@ TrainTestData::TrainTestData(std::string dataset_name, float test_size = 0) {
             // if no conversion could be performed
             std::cerr << "Some label has invalid format!" << std::endl;
             STD_STOI_FAIL_CASE(database, sup, str_label)
-                    continue;
+            continue;
         } catch(std::out_of_range& e){
             // if the converted value would fall out of the range of the result type
             std::cerr << "Some label is out of range!" << std::endl;
             STD_STOI_FAIL_CASE(database, sup, str_label)
-                    continue;
+            continue;
         }
 
         try {
@@ -156,7 +163,7 @@ TrainTestData::TrainTestData(std::string dataset_name, float test_size = 0) {
         labels.assign( labels.begin(), labels.begin() + train_size );
     }
 
-    auto custom_dataset = CustomDataset(images, labels).map(torch::data::transforms::Stack<>());
+    auto custom_dataset      = CustomDataset(images,      labels     ).map(torch::data::transforms::Stack<>());
     auto test_custom_dataset = CustomDataset(test_images, test_labels).map(torch::data::transforms::Stack<>());
 
     train_ = torch::data::make_data_loader<torch::data::samplers::SequentialSampler>(

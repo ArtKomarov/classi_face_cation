@@ -10,7 +10,7 @@ extern const size_t      DOTS_PERIOD;
 extern const std::string IMG_PROC_FAIL_MSG;
 
 class CustomDataset : public torch::data::Dataset<CustomDataset> {
-    std::vector <torch::Tensor> images_,      labels_;
+    std::vector <torch::Tensor> images_, labels_;
 //    std::vector <torch::Tensor> test_images_, test_labels_;
 
 public:
@@ -29,9 +29,13 @@ torch::data::samplers::SequentialSampler>, std::default_delete<torch::data::Stat
 torch::data::transforms::Stack<torch::data::Example<> > >, torch::data::samplers::SequentialSampler> > > > data_loader_t;
 
 struct TrainTestData {
+private:
+    bool good_;
+public:
     data_loader_t train_;
     data_loader_t test_;
     TrainTestData(std::string dataset_name, float test_size);
+    bool good() const;
 };
 
 
@@ -41,12 +45,14 @@ try {                                                \
                                                             \
     std::getline(database, str_label, ','); /* Get label */ \
 } catch (const std::ifstream::failure &e) {                             \
+    good_ = false;                                                      \
     std::cerr << IMG_PROC_FAIL_MSG << e.what() << std::endl;            \
     std::cerr << "failbit: "  << database.fail()                        \
               << "\neofbit: " << database.eof()                         \
               << "\nbadbit: " << database.bad() << std::endl;           \
     return;                                                             \
 } catch (...) {                                                         \
+    good_ = false;                                                      \
     std::cerr << IMG_PROC_FAIL_MSG << "unknown exception" << std::endl; \
     return;                                                             \
 }
