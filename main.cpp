@@ -18,21 +18,21 @@ using namespace torch;
 
 int main(int argc, char* argv[]) { //
     std::string data_file_name;
-    std::cout << "Try to give dataset name as first command line parametr...";
+    //std::cout << "Try to give dataset name as first command line parametr...";
     if(argc > 1) {
-        std::cout << "success" << std::endl;
+        //std::cout << "success" << std::endl;
         try {
             data_file_name = argv[1];
         } catch (const std::bad_alloc& ba) {
-            std::cout << "Fail to allcoate memory for dataset file name."<< std::endl;
+            std::cerr << "Fail to allcoate memory for dataset file name."<< std::endl;
             std::cerr << ba.what() << std::endl;
         } catch (const std::length_error& le) {
-            std::cout << "File name is too large!" << std::endl;
+            std::cerr << "File name is too large!" << std::endl;
             std::cerr << le.what() << std::endl;
         }
     }
     else {
-        std::cout << "failed" << std::endl;
+        //std::cout << "failed" << std::endl;
         std::cout << "Enter dataset file name:" << std::endl;
         std::cin >> data_file_name;
     }
@@ -100,7 +100,7 @@ int main(int argc, char* argv[]) { //
     size_t batch_index = 0;
 
     //Start training
-    for(size_t epoch=1; epoch<=50; ++epoch) {
+    for(size_t epoch=1; epoch<=2; ++epoch) {
         // Iterate data loader to yield batches from the dataset
         for (auto& batch : *(TTData.train_)) {
             // Reset gradients
@@ -125,8 +125,8 @@ int main(int argc, char* argv[]) { //
             if (batch_index++ % 2 == 0) {
                 std::cout << "Epoch: " << epoch << " | Batch: " << batch_index
                           << " | Loss: " << loss.item<float>() << std::endl;
+                break;
             }
-            break;
         }
 
         batch_index = 0;
@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) { //
     try {
         for (auto& batch : *(TTData.test_)) { // А тут норм WTF???
             Tensor prediction = net->forward(batch.data); //BUUUUM утечка только из-за этого
-            std::cout << loss_class(prediction, batch.target.squeeze()) << std::endl;
+            //std::cout << loss_class(prediction, batch.target.squeeze()) << std::endl;
 
             //std::cout << prediction << std::endl;
             //std::cout << prediction.argmax(1) << std::endl;
@@ -154,16 +154,16 @@ int main(int argc, char* argv[]) { //
         accuracy = correct_elems / torch::full(1, len, options);
         std::cerr << "Test accuracy: " << accuracy.item() << std::endl;
     } catch (const c10::IndexError& er){
-        std::cout << "Testing failed" << std::endl;
+        std::cerr << "Testing failed" << std::endl;
         std::cerr << er.what() << std::endl;
     } catch (const c10::ValueError& vr){
-        std::cout << "Testing failed" << std::endl;
+        std::cerr << "Testing failed" << std::endl;
         std::cerr << vr.what() << std::endl;
     } catch (const std::runtime_error& re) {
-        std::cout << "Testing failed" << std::endl;
+        std::cerr << "Testing failed" << std::endl;
         std::cerr << re.what() << std::endl;
     } catch(...) {
-        std::cout << "Testing failed" << std::endl;
+        std::cerr << "Testing failed" << std::endl;
         throw;
     }
 
