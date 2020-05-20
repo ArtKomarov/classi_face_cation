@@ -53,7 +53,18 @@ int main(int argc, char* argv[]) { //
     std::cout << "5 - ResNet18"      << std::endl;
     while (!num) // добавлено
     {
-        std::cin >> num;
+        std::cin » data_file_name;
+        try {
+        num = std::stoi(data_file_name); // Хотите c++ будет вам catch в catch(
+        } catch(std::invalid_argument& e){ // If fall, current row will be skiped
+        // if no conversion could be performed
+        std::cerr « "It is not a number!" « std::endl;
+        continue;
+        } catch(std::out_of_range& e){
+        // if the converted value would fall out of the range of the result type
+        std::cerr « "Number is out of range!" « std::endl;
+        continue;
+        }
         switch (num)
         {
         case 1:
