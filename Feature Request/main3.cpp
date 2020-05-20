@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) { //
         return -1;
     }
 
-    int num;
+    int num = 0;
     auto net = std::make_shared<Net>();
     std::cout << "Enter the number:" << std::endl;
     std::cout << "1 - AlexNet"       << std::endl;
@@ -51,24 +51,31 @@ int main(int argc, char* argv[]) { //
     std::cout << "3 - SmallNet"      << std::endl;
     std::cout << "4 - VGG16"         << std::endl;
     std::cout << "5 - ResNet18"      << std::endl;
-    std::cin >> num;
-    switch (num)
+    while (!num) // добавлено
     {
-    case 1:
-        net = std::make_shared<AlexNet>();
-        break;
-    case 2:
-        net = std::make_shared<OurNet>();
-        break;
-    case 3:
-        net = std::make_shared<SmallNet>();
-        break;
-    case 4:
-        net = std::make_shared<VGG16>();
-        break;
-    case 5:
-        net = std::make_shared<ResNet18>();
-        break;
+        std::cin >> num;
+        switch (num)
+        {
+        case 1:
+            net = std::make_shared<AlexNet>();
+            break;
+        case 2:
+            net = std::make_shared<OurNet>();
+            break;
+        case 3:
+            net = std::make_shared<SmallNet>();
+            break;
+        case 4:
+            net = std::make_shared<VGG16>();
+            break;
+        case 5:
+            net = std::make_shared<ResNet18>();
+            break;
+        default: // добавлено
+            num = 0; //
+            std::cout << "The number should be from 1 to 5" << std::endl; //
+            break; //
+        }
     }
 
 
