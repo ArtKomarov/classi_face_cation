@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) { //
     else {
         std::cout << "failed" << std::endl;
         std::cout << "Enter dataset file name:" << std::endl;
-        //TRoman
+        std::cin >> data_file_name;
     }
 
     TrainTestData TTData(data_file_name, 0.3);
