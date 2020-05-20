@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) { //
     std::cout << "5 - ResNet18"      << std::endl;
     while (!num) // добавлено
     {
-        std::cin » data_file_name;
+        std::cin >> data_file_name;
         try {
         num = std::stoi(data_file_name); // Хотите c++ будет вам catch в catch(
         } catch(std::invalid_argument& e){ // If fall, current row will be skiped
